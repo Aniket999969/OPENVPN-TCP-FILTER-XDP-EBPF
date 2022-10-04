@@ -8,7 +8,6 @@
 
 
 
-
 SEC("xdp/openvpn-tcp")
 int openvpntcp(xdp_md *ctx struct header_pointers *hdr) {
     
@@ -19,11 +18,11 @@ int openvpntcp(xdp_md *ctx struct header_pointers *hdr) {
     struct iphdr *ip_hdr;
     struct tcphdr *tcp_hdr;
     struct ethhdr *eth = data;
+
+    ip_len = sizeof(*ip_hdr)
     
     if (data + sizeof (struct ethhdr) > data_end)
       return XDP_DROP;
-   
-   // we will make sure that the packet is TCP not udp so the fool who is trying to send udp on tcp will be dropped :)
 
    	if (ip_hdr->protocol != IPPROTO_TCP)
 		 return XDP_PASS;
@@ -41,13 +40,18 @@ int openvpntcp(xdp_md *ctx struct header_pointers *hdr) {
     if (ip_hdr->ihl == 5)
      return XDP_PASS;
     
+    if (data + sizeof(eth_hdr) + ip_len + 60 > data_end)
+		return XDP_ABORTED;
+    
 		// TCP doesn't normally use fragments, and XDP can't reassemble them.
 		if ((ip_hdr->frag_off & bpf_htons(IP_DF | IP_MF | IP_OFFSET)) != bpf_htons(IP_DF))
 		 return XDP_DROP;
 
 
   // TCP headers checksum.
-    
+    if ((tcp_hdr->syn ^ tcp_hdr->ack) != 1)
+		return XDP_DROP;
+
   	if (tcp_hdr + 60 > data_end)
 		return XDP_DROP;
     
